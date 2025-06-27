@@ -221,7 +221,7 @@ function App() {
                 <Stethoscope className="h-8 w-8 text-medical-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">SOAP Note Refiner</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Vivaria</h1>
                 <p className="text-sm text-gray-600">AI-Powered Medical Documentation Assistant</p>
               </div>
             </div>
@@ -286,7 +286,7 @@ function App() {
       <footer className="bg-white border-t border-gray-200 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="text-center text-sm text-gray-500">
-            <p>SOAP Note Refiner - Secure, Privacy-First Medical Documentation Assistant</p>
+            <p>Vivaria - Secure, Privacy-First Medical Documentation Assistant</p>
             <p className="mt-1">All PHI is automatically anonymized before AI analysis. Data is stored locally.</p>
           </div>
         </div>

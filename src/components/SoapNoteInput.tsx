@@ -19,14 +19,14 @@ export const SoapNoteInput: React.FC<SoapNoteInputProps> = ({ onSubmit, isLoadin
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-xl font-semibold text-gray-800 mb-4">SOAP Note Input</h2>
+      <h2 className="text-xl font-semibold text-gray-800 mb-4">Chat</h2>
       
       <div className="space-y-4">
         <div className="relative">
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Enter your SOAP note here..."
+            placeholder="Enter your note here..."
             className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-medical-500 focus:border-transparent"
             disabled={isLoading}
           />
