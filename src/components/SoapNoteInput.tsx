@@ -1,6 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
-import { Upload, FileText, Loader2, Send } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, Loader2, Send } from 'lucide-react';
 
 interface SoapNoteInputProps {
   onSubmit: (text: string) => void;
@@ -9,7 +8,6 @@ interface SoapNoteInputProps {
 
 export const SoapNoteInput: React.FC<SoapNoteInputProps> = ({ onSubmit, isLoading }) => {
   const [text, setText] = useState('');
-  const [uploadStatus, setUploadStatus] = useState<string>('');
 
   const handleTextSubmit = () => {
     if (text.trim() && !isLoading) {
@@ -18,74 +16,17 @@ export const SoapNoteInput: React.FC<SoapNoteInputProps> = ({ onSubmit, isLoadin
     }
   };
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      setUploadStatus(`Reading ${file.name}...`);
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        setText(content);
-        setUploadStatus('');
-      };
-      
-      reader.onerror = () => {
-        setUploadStatus('Error reading file');
-        setTimeout(() => setUploadStatus(''), 3000);
-      };
-      
-      reader.readAsText(file);
-    }
-  }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'text/plain': ['.txt'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-    },
-    maxFiles: 1,
-    disabled: isLoading,
-  });
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-xl font-semibold text-gray-800 mb-4">SOAP Note Input</h2>
       
       <div className="space-y-4">
-        <div
-          {...getRootProps()}
-          className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-            isDragActive
-              ? 'border-medical-500 bg-medical-50'
-              : 'border-gray-300 hover:border-gray-400'
-          } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <input {...getInputProps()} />
-          <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          {uploadStatus ? (
-            <p className="text-sm text-medical-600">{uploadStatus}</p>
-          ) : (
-            <div>
-              <p className="text-sm text-gray-600">
-                {isDragActive
-                  ? 'Drop the file here...'
-                  : 'Drag & drop a SOAP note file here, or click to select'}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Supports .txt, .doc, .docx files
-              </p>
-            </div>
-          )}
-        </div>
-
         <div className="relative">
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Or paste your SOAP note here..."
+            placeholder="Enter your SOAP note here..."
             className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-medical-500 focus:border-transparent"
             disabled={isLoading}
           />

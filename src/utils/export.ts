@@ -6,16 +6,25 @@ export function exportConversations(conversations: ConversationEntry[]): void {
     return;
   }
 
+  const totalExchanges = conversations.reduce((sum, conv) => sum + conv.exchanges.length, 0);
+  
   const exportData = {
     exportDate: new Date().toISOString(),
     totalConversations: conversations.length,
+    totalExchanges,
     conversations: conversations.map(entry => ({
       id: entry.id,
-      timestamp: entry.timestamp.toISOString(),
-      originalText: entry.originalText,
-      anonymizedText: entry.anonymizedText,
-      analysis: entry.analysis,
-      replacements: entry.replacements,
+      title: entry.title,
+      startedAt: entry.startedAt.toISOString(),
+      lastUpdated: entry.lastUpdated.toISOString(),
+      exchanges: entry.exchanges.map(exchange => ({
+        id: exchange.id,
+        timestamp: exchange.timestamp.toISOString(),
+        originalText: exchange.originalText,
+        anonymizedText: exchange.anonymizedText,
+        analysis: exchange.analysis,
+        replacements: exchange.replacements,
+      }))
     }))
   };
 
@@ -41,27 +50,36 @@ export function exportAsText(conversations: ConversationEntry[]): void {
   textContent += `Total Conversations: ${conversations.length}\n`;
   textContent += `${'='.repeat(60)}\n\n`;
 
-  conversations.forEach((entry, index) => {
-    textContent += `Conversation ${index + 1}\n`;
-    textContent += `Date: ${entry.timestamp.toLocaleString()}\n`;
+  conversations.forEach((conversation, convIndex) => {
+    textContent += `Conversation ${convIndex + 1}: ${conversation.title || 'Untitled'}\n`;
+    textContent += `Started: ${conversation.startedAt.toLocaleString()}\n`;
+    textContent += `Last Updated: ${conversation.lastUpdated.toLocaleString()}\n`;
+    textContent += `Exchanges: ${conversation.exchanges.length}\n`;
     textContent += `${'-'.repeat(40)}\n\n`;
     
-    textContent += `ORIGINAL SOAP NOTE:\n`;
-    textContent += `${entry.originalText}\n\n`;
-    
-    textContent += `ANONYMIZED SOAP NOTE:\n`;
-    textContent += `${entry.anonymizedText}\n\n`;
-    
-    textContent += `ANALYSIS:\n`;
-    textContent += `${entry.analysis}\n\n`;
-    
-    if (entry.replacements.length > 0) {
-      textContent += `ANONYMIZATION DETAILS (${entry.replacements.length} replacements):\n`;
-      entry.replacements.forEach((replacement, idx) => {
-        textContent += `${idx + 1}. ${replacement.type.toUpperCase()}: "${replacement.original}" → "${replacement.replacement}"\n`;
-      });
+    conversation.exchanges.forEach((exchange, exchIndex) => {
+      textContent += `  Exchange ${exchIndex + 1} (${exchange.timestamp.toLocaleString()})\n`;
+      textContent += `  ${'-'.repeat(35)}\n\n`;
+      
+      textContent += `  ORIGINAL SOAP NOTE:\n`;
+      textContent += `  ${exchange.originalText.replace(/\n/g, '\n  ')}\n\n`;
+      
+      textContent += `  ANONYMIZED SOAP NOTE:\n`;
+      textContent += `  ${exchange.anonymizedText.replace(/\n/g, '\n  ')}\n\n`;
+      
+      textContent += `  ANALYSIS:\n`;
+      textContent += `  ${exchange.analysis.replace(/\n/g, '\n  ')}\n\n`;
+      
+      if (exchange.replacements.length > 0) {
+        textContent += `  ANONYMIZATION DETAILS (${exchange.replacements.length} replacements):\n`;
+        exchange.replacements.forEach((replacement, idx) => {
+          textContent += `  ${idx + 1}. ${replacement.type.toUpperCase()}: "${replacement.original}" → "${replacement.replacement}"\n`;
+        });
+        textContent += `\n`;
+      }
+      
       textContent += `\n`;
-    }
+    });
     
     textContent += `${'='.repeat(60)}\n\n`;
   });

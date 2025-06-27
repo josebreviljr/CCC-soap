@@ -1,4 +1,4 @@
-export interface ConversationEntry {
+export interface ConversationExchange {
   id: string;
   timestamp: Date;
   originalText: string;
@@ -9,6 +9,14 @@ export interface ConversationEntry {
     original: string;
     replacement: string;
   }>;
+}
+
+export interface ConversationEntry {
+  id: string;
+  startedAt: Date;
+  lastUpdated: Date;
+  exchanges: ConversationExchange[];
+  title?: string;
 }
 
 export type AIProvider = 'openai' | 'gemini';
@@ -36,5 +44,4 @@ export interface AppSettings {
 
 export interface LoadingState {
   isAnalyzing: boolean;
-  isUploading: boolean;
 }

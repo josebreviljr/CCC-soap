@@ -7,7 +7,7 @@ import { anonymizeText, DEFAULT_ANONYMIZATION_CONFIG } from './utils/anonymizati
 import { openaiService } from './services/openai';
 import { geminiService } from './services/gemini';
 import { exportConversations, exportAsText } from './utils/export';
-import { ConversationEntry, AppSettings, LoadingState } from './types';
+import { ConversationEntry, ConversationExchange, AppSettings, LoadingState } from './types';
 
 const getDefaultSettings = (): AppSettings => ({
   aiProvider: 'openai' as const,
@@ -23,12 +23,12 @@ const getDefaultSettings = (): AppSettings => ({
 });
 
 function App() {
-  const [conversations, setConversations] = useState<ConversationEntry[]>([]);
+  const [currentConversation, setCurrentConversation] = useState<ConversationEntry | null>(null);
+  const [conversationHistory, setConversationHistory] = useState<ConversationEntry[]>([]);
   const [settings, setSettings] = useState<AppSettings>(getDefaultSettings());
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState<LoadingState>({
     isAnalyzing: false,
-    isUploading: false,
   });
   const [error, setError] = useState<string>('');
 
@@ -48,11 +48,35 @@ function App() {
     if (savedConversations) {
       try {
         const parsed = JSON.parse(savedConversations);
-        const conversations = parsed.map((conv: any) => ({
-          ...conv,
-          timestamp: new Date(conv.timestamp)
-        }));
-        setConversations(conversations);
+        // Handle both old and new conversation formats
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (parsed[0].exchanges) {
+            // New format
+            const conversations = parsed.map((conv: any) => ({
+              ...conv,
+              startedAt: new Date(conv.startedAt),
+              lastUpdated: new Date(conv.lastUpdated),
+              exchanges: conv.exchanges.map((ex: any) => ({
+                ...ex,
+                timestamp: new Date(ex.timestamp)
+              }))
+            }));
+            setConversationHistory(conversations);
+          } else {
+            // Old format - migrate to new structure
+            const migratedConversation: ConversationEntry = {
+              id: 'migrated-' + Date.now(),
+              startedAt: new Date(parsed[0].timestamp || Date.now()),
+              lastUpdated: new Date(parsed[parsed.length - 1]?.timestamp || Date.now()),
+              exchanges: parsed.map((conv: any) => ({
+                ...conv,
+                timestamp: new Date(conv.timestamp)
+              })),
+              title: 'Migrated Conversation'
+            };
+            setConversationHistory([migratedConversation]);
+          }
+        }
       } catch (e) {
         console.error('Failed to parse saved conversations:', e);
       }
@@ -83,8 +107,11 @@ function App() {
   }, [settings]);
 
   useEffect(() => {
-    localStorage.setItem('soap-refiner-conversations', JSON.stringify(conversations));
-  }, [conversations]);
+    const allConversations = currentConversation 
+      ? [currentConversation, ...conversationHistory]
+      : conversationHistory;
+    localStorage.setItem('soap-refiner-conversations', JSON.stringify(allConversations));
+  }, [currentConversation, conversationHistory]);
 
   const handleSoapNoteSubmit = async (text: string) => {
     // Get API key from settings or fallback to environment variables
@@ -98,7 +125,7 @@ function App() {
       return;
     }
 
-    setLoading({ isAnalyzing: true, isUploading: false });
+    setLoading({ isAnalyzing: true });
     setError('');
 
     try {
@@ -108,7 +135,7 @@ function App() {
         ? await openaiService.analyzeSoapNote(anonymizationResult.anonymizedText)
         : await geminiService.analyzeSoapNote(anonymizationResult.anonymizedText);
 
-      const newEntry: ConversationEntry = {
+      const newExchange: ConversationExchange = {
         id: Date.now().toString(),
         timestamp: new Date(),
         originalText: text,
@@ -117,12 +144,29 @@ function App() {
         replacements: anonymizationResult.replacements,
       };
 
-      setConversations(prev => [newEntry, ...prev]);
+      if (currentConversation) {
+        // Add to existing conversation
+        setCurrentConversation(prev => ({
+          ...prev!,
+          lastUpdated: new Date(),
+          exchanges: [newExchange, ...prev!.exchanges]
+        }));
+      } else {
+        // Start new conversation
+        const newConversation: ConversationEntry = {
+          id: Date.now().toString(),
+          startedAt: new Date(),
+          lastUpdated: new Date(),
+          exchanges: [newExchange],
+          title: `Conversation ${new Date().toLocaleDateString()}`
+        };
+        setCurrentConversation(newConversation);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       setError(errorMessage);
     } finally {
-      setLoading({ isAnalyzing: false, isUploading: false });
+      setLoading({ isAnalyzing: false });
     }
   };
 
@@ -132,17 +176,30 @@ function App() {
   };
 
   const handleExport = () => {
+    const allConversations = currentConversation 
+      ? [currentConversation, ...conversationHistory]
+      : conversationHistory;
     const choice = window.confirm('Export as JSON (OK) or Text file (Cancel)?');
     if (choice) {
-      exportConversations(conversations);
+      exportConversations(allConversations);
     } else {
-      exportAsText(conversations);
+      exportAsText(allConversations);
+    }
+  };
+
+  const handleClearCurrent = () => {
+    if (window.confirm('Are you sure you want to clear the current conversation? This cannot be undone.')) {
+      if (currentConversation) {
+        setConversationHistory(prev => [currentConversation, ...prev]);
+      }
+      setCurrentConversation(null);
     }
   };
 
   const handleClearHistory = () => {
     if (window.confirm('Are you sure you want to clear all conversation history? This cannot be undone.')) {
-      setConversations([]);
+      setConversationHistory([]);
+      setCurrentConversation(null);
     }
   };
 
@@ -216,9 +273,11 @@ function App() {
           
           <div className="space-y-8">
             <ConversationHistory
-              conversations={conversations}
+              currentConversation={currentConversation}
+              conversationHistory={conversationHistory}
               onExport={handleExport}
               onClear={handleClearHistory}
+              onClearCurrent={handleClearCurrent}
             />
           </div>
         </div>

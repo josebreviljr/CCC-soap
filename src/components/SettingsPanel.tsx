@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Save, X, Eye, EyeOff } from 'lucide-react';
 import { AppSettings, AIProvider } from '../types';
-import { DEFAULT_ANONYMIZATION_CONFIG } from '../utils/anonymization';
 
 interface SettingsPanelProps {
   isOpen: boolean;
