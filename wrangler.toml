@@ -1,0 +1,5 @@
+name = "soap-note-refiner"
+compatibility_date = "2025-06-27"
+
+[site]
+bucket = "./build"

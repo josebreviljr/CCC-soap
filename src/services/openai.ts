@@ -78,7 +78,7 @@ export class OpenAIService {
 
     try {
       const response = await this.openai.chat.completions.create({
-        model: this.config.model || 'gpt-4',
+        model: this.config.model || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',

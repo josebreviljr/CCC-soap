@@ -13,7 +13,7 @@ const getDefaultSettings = (): AppSettings => ({
   aiProvider: 'openai' as const,
   openai: {
     apiKey: process.env.REACT_APP_OPENAI_API_KEY || '',
-    model: 'gpt-3.5-turbo',
+    model: 'gpt-4o-mini',
   },
   gemini: {
     apiKey: process.env.REACT_APP_GEMINI_API_KEY || '',
