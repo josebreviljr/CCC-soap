@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Eye, EyeOff, Download, Trash2, MessageSquare, RotateCcw, FileText, MessageCircle } from 'lucide-react';
+import { Download, Trash2, MessageSquare, RotateCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ConversationEntry } from '../types';
 
@@ -43,168 +43,153 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
 
   if (hasNoConversations) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Current Conversation</h2>
-        <div className="text-center py-8 text-gray-500">
-          <MessageSquare className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-          <p>No conversation started</p>
-          <p className="text-sm mt-2">Submit a SOAP note to begin</p>
+      <div className="h-full flex flex-col">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center py-8 text-gray-500">
+            <MessageSquare className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">Welcome to Vivaria</h3>
+            <p className="text-gray-500">Start a conversation by typing a message below</p>
+            <p className="text-sm mt-2 text-gray-400">You can ask questions, analyze SOAP notes, or have a general conversation</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-800">
-          Current Conversation {currentConversation && `(${totalExchanges} exchanges)`}
+    <div className="h-full flex flex-col">
+      {/* Header with controls */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+        <h2 className="text-lg font-semibold text-gray-800">
+          Vivaria {currentConversation && `• ${totalExchanges} messages`}
         </h2>
         <div className="flex space-x-2">
           {currentConversation && (
             <button
               onClick={onClearCurrent}
-              className="flex items-center space-x-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-md transition-colors"
+              className="flex items-center space-x-1 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg transition-colors"
             >
               <RotateCcw className="h-4 w-4" />
-              <span>New</span>
+              <span>New Chat</span>
             </button>
           )}
           <button
             onClick={onExport}
-            className="flex items-center space-x-1 text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md transition-colors"
+            className="flex items-center space-x-1 text-sm bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors"
           >
             <Download className="h-4 w-4" />
             <span>Export</span>
           </button>
           <button
             onClick={onClear}
-            className="flex items-center space-x-1 text-sm bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded-md transition-colors"
+            className="flex items-center space-x-1 text-sm bg-red-50 hover:bg-red-100 text-red-700 px-3 py-1.5 rounded-lg transition-colors"
           >
             <Trash2 className="h-4 w-4" />
-            <span>Clear All</span>
+            <span>Clear</span>
           </button>
         </div>
       </div>
 
-      <div className="space-y-4 max-h-96 overflow-y-auto">
-        {currentConversation?.exchanges.map((exchange) => (
-          <div key={exchange.id} className="border border-gray-200 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Clock className="h-4 w-4" />
-                <span>{formatTimestamp(exchange.timestamp)}</span>
-                {exchange.messageType === 'soap_note' ? (
-                  <div className="flex items-center space-x-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                    <FileText className="h-3 w-3" />
-                    <span>SOAP Note</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                    <MessageCircle className="h-3 w-3" />
-                    <span>Chat</span>
-                  </div>
-                )}
-                {exchange.replacements.length > 0 && (
-                  <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">
-                    {exchange.replacements.length} items anonymized
-                  </span>
-                )}
-              </div>
-              <button
-                onClick={() => toggleOriginal(exchange.id)}
-                className="flex items-center space-x-1 text-xs text-gray-500 hover:text-gray-700"
-              >
-                {showOriginal[exchange.id] ? (
-                  <>
-                    <EyeOff className="h-3 w-3" />
-                    <span>Hide Original</span>
-                  </>
-                ) : (
-                  <>
-                    <Eye className="h-3 w-3" />
-                    <span>Show Original</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-1">
-                  {exchange.messageType === 'soap_note' ? 'SOAP Note Input:' : 'User Message:'}
-                </h4>
-                <div 
-                  className={`text-sm bg-gray-50 p-3 rounded border ${
-                    expandedEntries[exchange.id] ? '' : 'max-h-20 overflow-hidden'
-                  }`}
-                >
+      {/* Chat messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+        {currentConversation?.exchanges.slice().reverse().map((exchange) => (
+          <div key={exchange.id} className="space-y-4">
+            {/* User message */}
+            <div className="flex justify-end">
+              <div className="max-w-[80%] bg-blue-500 text-white rounded-2xl rounded-br-md px-4 py-3">
+                <div className="text-sm font-medium mb-1 flex items-center space-x-2">
+                  <span>You</span>
+                  {exchange.messageType === 'soap_note' && (
+                    <span className="bg-white bg-opacity-20 px-2 py-0.5 rounded-full text-xs font-normal">
+                      SOAP Note
+                    </span>
+                  )}
+                  {exchange.replacements.length > 0 && (
+                    <span className="bg-orange-400 bg-opacity-80 px-2 py-0.5 rounded-full text-xs font-normal">
+                      Anonymized
+                    </span>
+                  )}
+                </div>
+                <div className="whitespace-pre-wrap text-sm">
                   {showOriginal[exchange.id] ? exchange.originalText : exchange.anonymizedText}
                 </div>
-                {(showOriginal[exchange.id] ? exchange.originalText : exchange.anonymizedText).length > 200 && (
-                  <button
-                    onClick={() => toggleExpanded(exchange.id)}
-                    className="text-xs text-medical-600 hover:text-medical-700 mt-1"
-                  >
-                    {expandedEntries[exchange.id] ? 'Show less' : 'Show more'}
-                  </button>
-                )}
+                <div className="flex items-center justify-between mt-2 text-xs text-blue-100">
+                  <span>{formatTimestamp(exchange.timestamp)}</span>
+                  {exchange.replacements.length > 0 && (
+                    <button
+                      onClick={() => toggleOriginal(exchange.id)}
+                      className="hover:text-white transition-colors"
+                    >
+                      {showOriginal[exchange.id] ? 'Hide Original' : 'Show Original'}
+                    </button>
+                  )}
+                </div>
               </div>
+            </div>
 
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-1">
-                  {exchange.messageType === 'soap_note' ? 'SOAP Analysis:' : 'AI Response:'}
-                </h4>
-                <div className="text-sm text-gray-800 bg-blue-50 p-3 rounded border prose prose-sm max-w-none markdown-content">
+            {/* AI response */}
+            <div className="flex justify-start">
+              <div className="max-w-[80%] bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3">
+                <div className="text-sm font-medium mb-2 text-gray-700">Vivaria</div>
+                <div className="text-sm text-gray-800 prose prose-sm max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2">
                   <ReactMarkdown>
                     {exchange.analysis}
                   </ReactMarkdown>
                 </div>
+                <div className="text-xs text-gray-500 mt-2">
+                  {formatTimestamp(exchange.timestamp)}
+                </div>
               </div>
+            </div>
 
-              {exchange.replacements.length > 0 && (
-                <details className="text-xs">
-                  <summary className="cursor-pointer text-gray-600 hover:text-gray-800">
+            {/* Anonymization details */}
+            {exchange.replacements.length > 0 && (
+              <div className="flex justify-center">
+                <details className="text-xs max-w-md w-full">
+                  <summary className="cursor-pointer text-gray-500 hover:text-gray-700 text-center py-2 px-4 bg-gray-50 rounded-lg">
                     View anonymization details ({exchange.replacements.length} replacements)
                   </summary>
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-2 space-y-1 bg-white border border-gray-200 rounded-lg p-3">
                     {exchange.replacements.map((replacement, idx) => (
-                      <div key={idx} className="flex justify-between bg-gray-50 p-2 rounded">
-                        <span className="font-mono text-red-600">{replacement.original}</span>
-                        <span>→</span>
-                        <span className="font-mono text-green-600">{replacement.replacement}</span>
-                        <span className="text-gray-500 uppercase">{replacement.type}</span>
+                      <div key={idx} className="flex justify-between items-center bg-gray-50 p-2 rounded text-xs">
+                        <span className="font-mono text-red-600 flex-1 truncate">{replacement.original}</span>
+                        <span className="mx-2">→</span>
+                        <span className="font-mono text-green-600 flex-1 truncate">{replacement.replacement}</span>
+                        <span className="text-gray-500 uppercase text-xs ml-2">{replacement.type}</span>
                       </div>
                     ))}
                   </div>
                 </details>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
 
+      {/* Past conversations sidebar (collapsed by default) */}
       {conversationHistory.length > 0 && (
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <h3 className="text-lg font-medium text-gray-800 mb-4">
-            Past Conversations ({conversationHistory.length})
-          </h3>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {conversationHistory.map((conversation) => (
-              <div key={conversation.id} className="bg-gray-50 rounded-lg p-3">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <MessageSquare className="h-4 w-4" />
-                    <span>{conversation.title || "Untitled Conversation"}</span>
-                    <span className="text-xs">({conversation.exchanges.length} exchanges)</span>
-                  </div>
-                  <div className="text-gray-500 text-xs">
-                    {formatTimestamp(conversation.lastUpdated)}
+        <div className="border-t border-gray-200 bg-gray-50">
+          <details className="">
+            <summary className="cursor-pointer p-4 text-sm font-medium text-gray-700 hover:bg-gray-100">
+              Past Conversations ({conversationHistory.length})
+            </summary>
+            <div className="px-4 pb-4 space-y-2 max-h-40 overflow-y-auto">
+              {conversationHistory.map((conversation) => (
+                <div key={conversation.id} className="bg-white rounded-lg p-3 shadow-sm">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <MessageSquare className="h-4 w-4" />
+                      <span className="truncate">{conversation.title || "Untitled Conversation"}</span>
+                      <span className="text-xs text-gray-400">({conversation.exchanges.length})</span>
+                    </div>
+                    <div className="text-gray-400 text-xs">
+                      {formatTimestamp(conversation.lastUpdated)}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </details>
         </div>
       )}
     </div>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Stethoscope, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
-import { SoapNoteInput } from './components/SoapNoteInput';
 import { ChatInput } from './components/ChatInput';
 import { ConversationHistory } from './components/ConversationHistory';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -123,64 +122,17 @@ function App() {
     localStorage.setItem('soap-refiner-conversations', JSON.stringify(allConversations));
   }, [currentConversation, conversationHistory]);
 
-  const handleSoapNoteSubmit = async (text: string) => {
-    // Get API key from settings or fallback to environment variables
-    const currentApiKey = settings.aiProvider === 'openai' 
-      ? settings.openai.apiKey || process.env.REACT_APP_OPENAI_API_KEY
-      : settings.gemini.apiKey || process.env.REACT_APP_GEMINI_API_KEY;
-      
-    if (!currentApiKey) {
-      setError(`Please configure your ${settings.aiProvider === 'openai' ? 'OpenAI' : 'Google Gemini'} API key in settings or environment variables`);
-      setShowSettings(true);
-      return;
-    }
 
-    setLoading({ isAnalyzing: true });
-    setError('');
-
-    try {
-      const anonymizationResult = anonymizeText(text, settings.anonymizationConfig);
-      
-      const analysis = settings.aiProvider === 'openai'
-        ? await openaiService.analyzeSoapNote(anonymizationResult.anonymizedText)
-        : await geminiService.analyzeSoapNote(anonymizationResult.anonymizedText);
-
-      const newExchange: ConversationExchange = {
-        id: Date.now().toString(),
-        timestamp: new Date(),
-        originalText: text,
-        anonymizedText: anonymizationResult.anonymizedText,
-        analysis,
-        replacements: anonymizationResult.replacements,
-        messageType: 'soap_note',
-      };
-
-      if (currentConversation) {
-        // Add to existing conversation
-        setCurrentConversation(prev => ({
-          ...prev!,
-          lastUpdated: new Date(),
-          exchanges: [newExchange, ...prev!.exchanges],
-          conversationType: prev!.conversationType === 'chat' ? 'mixed' : 'soap_notes'
-        }));
-      } else {
-        // Start new conversation
-        const newConversation: ConversationEntry = {
-          id: Date.now().toString(),
-          startedAt: new Date(),
-          lastUpdated: new Date(),
-          exchanges: [newExchange],
-          title: `SOAP Note Conversation ${new Date().toLocaleDateString()}`,
-          conversationType: 'soap_notes'
-        };
-        setCurrentConversation(newConversation);
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
-      setError(errorMessage);
-    } finally {
-      setLoading({ isAnalyzing: false });
-    }
+  const detectSoapNote = (text: string): boolean => {
+    const soapKeywords = ['subjective', 'objective', 'assessment', 'plan', 'chief complaint', 'hpi', 'ros', 'physical exam', 'vital signs', 'bp:', 'hr:', 'temp:', 'cc:', 's:', 'o:', 'a:', 'p:'];
+    const lowerText = text.toLowerCase();
+    const wordCount = text.trim().split(/\s+/).length;
+    
+    // Check if text contains SOAP-related keywords and is substantial
+    const hasKeywords = soapKeywords.some(keyword => lowerText.includes(keyword));
+    const isSubstantial = wordCount > 20; // Assume SOAP notes are more detailed
+    
+    return hasKeywords && isSubstantial;
   };
 
   const handleChatSubmit = async (text: string, messageType: 'soap_note' | 'chat') => {
@@ -202,7 +154,11 @@ function App() {
       let analysis: string;
       let anonymizationResult: any = { anonymizedText: text, replacements: [] };
 
-      if (messageType === 'soap_note') {
+      // Auto-detect SOAP note content
+      const isSoapNote = detectSoapNote(text);
+      const actualMessageType = isSoapNote ? 'soap_note' : 'chat';
+
+      if (isSoapNote) {
         // Handle SOAP note analysis
         anonymizationResult = anonymizeText(text, settings.anonymizationConfig);
         analysis = settings.aiProvider === 'openai'
@@ -222,7 +178,7 @@ function App() {
         anonymizedText: anonymizationResult.anonymizedText,
         analysis,
         replacements: anonymizationResult.replacements,
-        messageType,
+        messageType: actualMessageType,
       };
 
       if (currentConversation) {
@@ -240,8 +196,8 @@ function App() {
           startedAt: new Date(),
           lastUpdated: new Date(),
           exchanges: [newExchange],
-          title: `${messageType === 'soap_note' ? 'SOAP Note' : 'Chat'} Conversation ${new Date().toLocaleDateString()}`,
-          conversationType: messageType === 'soap_note' ? 'soap_notes' : 'chat'
+          title: `${actualMessageType === 'soap_note' ? 'SOAP Note' : 'Chat'} Conversation ${new Date().toLocaleDateString()}`,
+          conversationType: actualMessageType === 'soap_note' ? 'soap_notes' : 'chat'
         };
         setCurrentConversation(newConversation);
       }
@@ -346,28 +302,25 @@ function App() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="space-y-8">
-            <SoapNoteInput 
-              onSubmit={handleSoapNoteSubmit}
-              isLoading={loading.isAnalyzing}
-            />
+        <div className="max-w-4xl mx-auto">
+          <div className="flex flex-col h-[calc(100vh-280px)]">
+            <div className="flex-1 overflow-hidden">
+              <ConversationHistory
+                currentConversation={currentConversation}
+                conversationHistory={conversationHistory}
+                onExport={handleExport}
+                onClear={handleClearHistory}
+                onClearCurrent={handleClearCurrent}
+              />
+            </div>
             
-            <ChatInput
-              onSubmit={handleChatSubmit}
-              loading={loading.isAnalyzing}
-              placeholder="Ask questions, get clarifications, or have a conversation..."
-            />
-          </div>
-          
-          <div className="space-y-8">
-            <ConversationHistory
-              currentConversation={currentConversation}
-              conversationHistory={conversationHistory}
-              onExport={handleExport}
-              onClear={handleClearHistory}
-              onClearCurrent={handleClearCurrent}
-            />
+            <div className="mt-4">
+              <ChatInput
+                onSubmit={handleChatSubmit}
+                loading={loading.isAnalyzing}
+                placeholder="Message Vivaria - ask questions, share SOAP notes for analysis, or have a conversation..."
+              />
+            </div>
           </div>
         </div>
       </main>
