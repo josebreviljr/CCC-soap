@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, FileText, MessageSquare } from 'lucide-react';
+import { Send } from 'lucide-react';
 
 interface ChatInputProps {
   onSubmit: (text: string, messageType: 'soap_note' | 'chat') => Promise<void>;
@@ -13,7 +13,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   placeholder = "Enter your message or SOAP note..."
 }) => {
   const [inputText, setInputText] = useState('');
-  const [messageType, setMessageType] = useState<'soap_note' | 'chat'>('chat');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +22,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setInputText('');
     
     try {
-      await onSubmit(textToSubmit, messageType);
+      await onSubmit(textToSubmit, 'chat');
     } catch (error) {
       console.error('Error submitting message:', error);
     }
@@ -36,66 +35,48 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
-  return (
-    <div className="bg-white rounded-lg shadow-md p-4">
-      <div className="flex items-center space-x-2 mb-3">
-        <button
-          onClick={() => setMessageType('chat')}
-          className={`flex items-center space-x-1 px-3 py-1 rounded-md text-sm transition-colors ${
-            messageType === 'chat'
-              ? 'bg-blue-100 text-blue-700'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          <MessageSquare className="h-4 w-4" />
-          <span>Chat</span>
-        </button>
-        <button
-          onClick={() => setMessageType('soap_note')}
-          className={`flex items-center space-x-1 px-3 py-1 rounded-md text-sm transition-colors ${
-            messageType === 'soap_note'
-              ? 'bg-green-100 text-green-700'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          <FileText className="h-4 w-4" />
-          <span>SOAP Note</span>
-        </button>
-      </div>
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputText(e.target.value);
+    
+    // Auto-resize textarea
+    const textarea = e.target;
+    textarea.style.height = 'auto';
+    const newHeight = Math.min(textarea.scrollHeight, 160); // max height 160px
+    textarea.style.height = newHeight + 'px';
+  };
 
-      <form onSubmit={handleSubmit} className="flex space-x-2">
-        <textarea
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder={messageType === 'soap_note' 
-            ? "Enter SOAP note details for analysis..." 
-            : placeholder}
-          className="flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          rows={3}
-          disabled={loading}
-        />
-        <button
-          type="submit"
-          disabled={!inputText.trim() || loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-        >
-          <Send className="h-4 w-4" />
-          <span>Send</span>
-        </button>
+  return (
+    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4">
+
+      <form onSubmit={handleSubmit} className="relative">
+        <div className="relative flex items-end bg-gray-50 rounded-2xl border border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+          <textarea
+            value={inputText}
+            onChange={handleTextareaChange}
+            onKeyPress={handleKeyPress}
+            placeholder={placeholder}
+            className="flex-1 bg-transparent p-4 pr-12 resize-none border-0 focus:ring-0 focus:outline-none placeholder-gray-500 max-h-40 min-h-[60px]"
+            rows={1}
+            disabled={loading}
+            style={{ resize: 'none' }}
+          />
+          <button
+            type="submit"
+            disabled={!inputText.trim() || loading}
+            className={`absolute right-2 bottom-2 p-2 rounded-xl transition-all ${
+              !inputText.trim() || loading
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-500 text-white hover:bg-blue-600 shadow-md hover:shadow-lg'
+            }`}
+          >
+            <Send className="h-5 w-5" />
+          </button>
+        </div>
       </form>
 
-      {messageType === 'soap_note' && (
-        <div className="mt-2 text-xs text-gray-600">
-          <p>💡 <strong>SOAP Note Mode:</strong> Enter patient details, symptoms, or clinical observations for structured SOAP note generation.</p>
-        </div>
-      )}
-      
-      {messageType === 'chat' && (
-        <div className="mt-2 text-xs text-gray-600">
-          <p>💬 <strong>Chat Mode:</strong> Ask questions, get clarifications, or have a conversation with the AI assistant.</p>
-        </div>
-      )}
+      <div className="mt-3 text-xs text-gray-500">
+        <p>💬 Press Enter to send, Shift+Enter for new line. SOAP notes are automatically detected and analyzed.</p>
+      </div>
     </div>
   );
 }; 
