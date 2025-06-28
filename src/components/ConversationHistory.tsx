@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Download, Trash2, MessageSquare, RotateCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ConversationEntry } from '../types';
@@ -9,6 +9,7 @@ interface ConversationHistoryProps {
   onExport: () => void;
   onClear: () => void;
   onClearCurrent: () => void;
+  loading?: boolean;
 }
 
 export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
@@ -17,13 +18,19 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
   onExport,
   onClear,
   onClearCurrent,
+  loading = false,
 }) => {
   const [showOriginal, setShowOriginal] = useState<{ [key: string]: boolean }>({});
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const toggleOriginal = (id: string) => {
     setShowOriginal(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
+  // Auto-scroll to bottom when new messages are added or loading state changes
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [currentConversation?.exchanges.length, loading]);
 
   const formatTimestamp = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -127,11 +134,18 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
             <div className="flex justify-start">
               <div className="max-w-[80%] bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3">
                 <div className="text-sm font-medium mb-2 text-gray-700">Vivaria</div>
-                <div className="text-sm text-gray-800 prose prose-sm max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2">
-                  <ReactMarkdown>
-                    {exchange.analysis}
-                  </ReactMarkdown>
-                </div>
+                {exchange.analysis ? (
+                  <div className="text-sm text-gray-800 prose prose-sm max-w-none prose-p:my-2 prose-ul:my-2 prose-ol:my-2">
+                    <ReactMarkdown>
+                      {exchange.analysis}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                    <span>Thinking...</span>
+                  </div>
+                )}
                 <div className="text-xs text-gray-500 mt-2">
                   {formatTimestamp(exchange.timestamp)}
                 </div>
@@ -160,34 +174,23 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
             )}
           </div>
         ))}
+        {/* Loading indicator */}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%] bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3">
+              <div className="text-sm font-medium mb-2 text-gray-700">Vivaria</div>
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                <span>Thinking...</span>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Invisible div for auto-scroll */}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Past conversations sidebar (collapsed by default) */}
-      {conversationHistory.length > 0 && (
-        <div className="border-t border-gray-200 bg-gray-50">
-          <details className="">
-            <summary className="cursor-pointer p-4 text-sm font-medium text-gray-700 hover:bg-gray-100">
-              Past Conversations ({conversationHistory.length})
-            </summary>
-            <div className="px-4 pb-4 space-y-2 max-h-40 overflow-y-auto">
-              {conversationHistory.map((conversation) => (
-                <div key={conversation.id} className="bg-white rounded-lg p-3 shadow-sm">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <MessageSquare className="h-4 w-4" />
-                      <span className="truncate">{conversation.title || "Untitled Conversation"}</span>
-                      <span className="text-xs text-gray-400">({conversation.exchanges.length})</span>
-                    </div>
-                    <div className="text-gray-400 text-xs">
-                      {formatTimestamp(conversation.lastUpdated)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </details>
-        </div>
-      )}
     </div>
   );
 };

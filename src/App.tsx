@@ -147,20 +147,55 @@ function App() {
       return;
     }
 
-    setLoading({ isAnalyzing: true });
     setError('');
+
+    // Auto-detect SOAP note content
+    const isSoapNote = detectSoapNote(text);
+    const actualMessageType = isSoapNote ? 'soap_note' : 'chat';
+    let anonymizationResult: any = { anonymizedText: text, replacements: [] };
+    
+    if (isSoapNote) {
+      anonymizationResult = anonymizeText(text, settings.anonymizationConfig);
+    }
+
+    // Create temporary exchange with user input (no analysis yet)
+    const tempExchange: ConversationExchange = {
+      id: Date.now().toString(),
+      timestamp: new Date(),
+      originalText: text,
+      anonymizedText: anonymizationResult.anonymizedText,
+      analysis: '', // Empty initially
+      replacements: anonymizationResult.replacements,
+      messageType: actualMessageType,
+    };
+
+    // Immediately show user input
+    if (currentConversation) {
+      setCurrentConversation(prev => ({
+        ...prev!,
+        lastUpdated: new Date(),
+        exchanges: [tempExchange, ...prev!.exchanges],
+        conversationType: prev!.conversationType === 'soap_notes' ? 'mixed' : 'chat'
+      }));
+    } else {
+      const newConversation: ConversationEntry = {
+        id: Date.now().toString(),
+        startedAt: new Date(),
+        lastUpdated: new Date(),
+        exchanges: [tempExchange],
+        title: `${actualMessageType === 'soap_note' ? 'SOAP Note' : 'Chat'} Conversation ${new Date().toLocaleDateString()}`,
+        conversationType: actualMessageType === 'soap_note' ? 'soap_notes' : 'chat'
+      };
+      setCurrentConversation(newConversation);
+    }
+
+    setLoading({ isAnalyzing: true });
 
     try {
       let analysis: string;
-      let anonymizationResult: any = { anonymizedText: text, replacements: [] };
-
-      // Auto-detect SOAP note content
-      const isSoapNote = detectSoapNote(text);
-      const actualMessageType = isSoapNote ? 'soap_note' : 'chat';
 
       if (isSoapNote) {
         // Handle SOAP note analysis
-        anonymizationResult = anonymizeText(text, settings.anonymizationConfig);
         analysis = settings.aiProvider === 'openai'
           ? await openaiService.analyzeSoapNote(anonymizationResult.anonymizedText)
           : await geminiService.analyzeSoapNote(anonymizationResult.anonymizedText);
@@ -171,39 +206,27 @@ function App() {
           : await geminiService.analyzeSoapNote(text); // Fallback for Gemini
       }
 
-      const newExchange: ConversationExchange = {
-        id: Date.now().toString(),
-        timestamp: new Date(),
-        originalText: text,
-        anonymizedText: anonymizationResult.anonymizedText,
+      // Update the exchange with the analysis
+      const completedExchange: ConversationExchange = {
+        ...tempExchange,
         analysis,
-        replacements: anonymizationResult.replacements,
-        messageType: actualMessageType,
       };
 
-      if (currentConversation) {
-        // Add to existing conversation
-        setCurrentConversation(prev => ({
-          ...prev!,
-          lastUpdated: new Date(),
-          exchanges: [newExchange, ...prev!.exchanges],
-          conversationType: prev!.conversationType === 'soap_notes' ? 'mixed' : 'chat'
-        }));
-      } else {
-        // Start new conversation
-        const newConversation: ConversationEntry = {
-          id: Date.now().toString(),
-          startedAt: new Date(),
-          lastUpdated: new Date(),
-          exchanges: [newExchange],
-          title: `${actualMessageType === 'soap_note' ? 'SOAP Note' : 'Chat'} Conversation ${new Date().toLocaleDateString()}`,
-          conversationType: actualMessageType === 'soap_note' ? 'soap_notes' : 'chat'
-        };
-        setCurrentConversation(newConversation);
-      }
+      setCurrentConversation(prev => ({
+        ...prev!,
+        lastUpdated: new Date(),
+        exchanges: prev!.exchanges.map(ex => 
+          ex.id === tempExchange.id ? completedExchange : ex
+        )
+      }));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       setError(errorMessage);
+      // Remove the temporary exchange on error
+      setCurrentConversation(prev => prev ? {
+        ...prev,
+        exchanges: prev.exchanges.filter(ex => ex.id !== tempExchange.id)
+      } : null);
     } finally {
       setLoading({ isAnalyzing: false });
     }
