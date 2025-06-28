@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Eye, EyeOff, Download, Trash2, MessageSquare, RotateCcw } from 'lucide-react';
+import { Clock, Eye, EyeOff, Download, Trash2, MessageSquare, RotateCcw, FileText, MessageCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ConversationEntry } from '../types';
 
@@ -94,8 +94,19 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Clock className="h-4 w-4" />
                 <span>{formatTimestamp(exchange.timestamp)}</span>
+                {exchange.messageType === 'soap_note' ? (
+                  <div className="flex items-center space-x-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                    <FileText className="h-3 w-3" />
+                    <span>SOAP Note</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                    <MessageCircle className="h-3 w-3" />
+                    <span>Chat</span>
+                  </div>
+                )}
                 {exchange.replacements.length > 0 && (
-                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+                  <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">
                     {exchange.replacements.length} items anonymized
                   </span>
                 )}
@@ -121,7 +132,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
             <div className="space-y-3">
               <div>
                 <h4 className="text-sm font-medium text-gray-700 mb-1">
-                  {showOriginal[exchange.id] ? 'Original SOAP Note:' : 'Anonymized SOAP Note:'}
+                  {exchange.messageType === 'soap_note' ? 'SOAP Note Input:' : 'User Message:'}
                 </h4>
                 <div 
                   className={`text-sm bg-gray-50 p-3 rounded border ${
@@ -141,7 +152,9 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
               </div>
 
               <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-1">Analysis:</h4>
+                <h4 className="text-sm font-medium text-gray-700 mb-1">
+                  {exchange.messageType === 'soap_note' ? 'SOAP Analysis:' : 'AI Response:'}
+                </h4>
                 <div className="text-sm text-gray-800 bg-blue-50 p-3 rounded border prose prose-sm max-w-none markdown-content">
                   <ReactMarkdown>
                     {exchange.analysis}

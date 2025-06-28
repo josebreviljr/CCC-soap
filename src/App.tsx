@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Stethoscope, Settings as SettingsIcon, AlertCircle } from 'lucide-react';
 import { SoapNoteInput } from './components/SoapNoteInput';
+import { ChatInput } from './components/ChatInput';
 import { ConversationHistory } from './components/ConversationHistory';
 import { SettingsPanel } from './components/SettingsPanel';
 import { anonymizeText, DEFAULT_ANONYMIZATION_CONFIG } from './utils/anonymization';
@@ -106,6 +107,15 @@ function App() {
     }
   }, [settings]);
 
+  // Set conversation context when current conversation changes
+  useEffect(() => {
+    if (currentConversation) {
+      openaiService.setConversationContext(currentConversation.exchanges);
+    } else {
+      openaiService.clearConversationContext();
+    }
+  }, [currentConversation]);
+
   useEffect(() => {
     const allConversations = currentConversation 
       ? [currentConversation, ...conversationHistory]
@@ -142,6 +152,7 @@ function App() {
         anonymizedText: anonymizationResult.anonymizedText,
         analysis,
         replacements: anonymizationResult.replacements,
+        messageType: 'soap_note',
       };
 
       if (currentConversation) {
@@ -149,7 +160,8 @@ function App() {
         setCurrentConversation(prev => ({
           ...prev!,
           lastUpdated: new Date(),
-          exchanges: [newExchange, ...prev!.exchanges]
+          exchanges: [newExchange, ...prev!.exchanges],
+          conversationType: prev!.conversationType === 'chat' ? 'mixed' : 'soap_notes'
         }));
       } else {
         // Start new conversation
@@ -158,7 +170,78 @@ function App() {
           startedAt: new Date(),
           lastUpdated: new Date(),
           exchanges: [newExchange],
-          title: `Conversation ${new Date().toLocaleDateString()}`
+          title: `SOAP Note Conversation ${new Date().toLocaleDateString()}`,
+          conversationType: 'soap_notes'
+        };
+        setCurrentConversation(newConversation);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
+    } finally {
+      setLoading({ isAnalyzing: false });
+    }
+  };
+
+  const handleChatSubmit = async (text: string, messageType: 'soap_note' | 'chat') => {
+    // Get API key from settings or fallback to environment variables
+    const currentApiKey = settings.aiProvider === 'openai' 
+      ? settings.openai.apiKey || process.env.REACT_APP_OPENAI_API_KEY
+      : settings.gemini.apiKey || process.env.REACT_APP_GEMINI_API_KEY;
+      
+    if (!currentApiKey) {
+      setError(`Please configure your ${settings.aiProvider === 'openai' ? 'OpenAI' : 'Google Gemini'} API key in settings or environment variables`);
+      setShowSettings(true);
+      return;
+    }
+
+    setLoading({ isAnalyzing: true });
+    setError('');
+
+    try {
+      let analysis: string;
+      let anonymizationResult: any = { anonymizedText: text, replacements: [] };
+
+      if (messageType === 'soap_note') {
+        // Handle SOAP note analysis
+        anonymizationResult = anonymizeText(text, settings.anonymizationConfig);
+        analysis = settings.aiProvider === 'openai'
+          ? await openaiService.analyzeSoapNote(anonymizationResult.anonymizedText)
+          : await geminiService.analyzeSoapNote(anonymizationResult.anonymizedText);
+      } else {
+        // Handle regular chat
+        analysis = settings.aiProvider === 'openai'
+          ? await openaiService.chat(text)
+          : await geminiService.analyzeSoapNote(text); // Fallback for Gemini
+      }
+
+      const newExchange: ConversationExchange = {
+        id: Date.now().toString(),
+        timestamp: new Date(),
+        originalText: text,
+        anonymizedText: anonymizationResult.anonymizedText,
+        analysis,
+        replacements: anonymizationResult.replacements,
+        messageType,
+      };
+
+      if (currentConversation) {
+        // Add to existing conversation
+        setCurrentConversation(prev => ({
+          ...prev!,
+          lastUpdated: new Date(),
+          exchanges: [newExchange, ...prev!.exchanges],
+          conversationType: prev!.conversationType === 'soap_notes' ? 'mixed' : 'chat'
+        }));
+      } else {
+        // Start new conversation
+        const newConversation: ConversationEntry = {
+          id: Date.now().toString(),
+          startedAt: new Date(),
+          lastUpdated: new Date(),
+          exchanges: [newExchange],
+          title: `${messageType === 'soap_note' ? 'SOAP Note' : 'Chat'} Conversation ${new Date().toLocaleDateString()}`,
+          conversationType: messageType === 'soap_note' ? 'soap_notes' : 'chat'
         };
         setCurrentConversation(newConversation);
       }
@@ -268,6 +351,12 @@ function App() {
             <SoapNoteInput 
               onSubmit={handleSoapNoteSubmit}
               isLoading={loading.isAnalyzing}
+            />
+            
+            <ChatInput
+              onSubmit={handleChatSubmit}
+              loading={loading.isAnalyzing}
+              placeholder="Ask questions, get clarifications, or have a conversation..."
             />
           </div>
           
