@@ -19,15 +19,11 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
   onClearCurrent,
 }) => {
   const [showOriginal, setShowOriginal] = useState<{ [key: string]: boolean }>({});
-  const [expandedEntries, setExpandedEntries] = useState<{ [key: string]: boolean }>({});
 
   const toggleOriginal = (id: string) => {
     setShowOriginal(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const toggleExpanded = (id: string) => {
-    setExpandedEntries(prev => ({ ...prev, [id]: !prev[id] }));
-  };
 
   const formatTimestamp = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
